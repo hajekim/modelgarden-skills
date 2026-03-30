@@ -1,6 +1,6 @@
 # Model Garden Skills for Gemini CLI
 
-Vertex AI Model Garden의 오픈 모델 서빙 두 가지 방식—**MaaS(관리형 오픈 모델)**와 **자체 배포(Self-Deploy)**—을 Gemini CLI에서 바로 활용할 수 있도록 만든 Skills 모음입니다.
+Vertex AI Model Garden의 오픈 모델 서빙 두 가지 방식—**MaaS** (관리형 오픈 모델)와 **자체 배포** (Self-Deploy)—을 Gemini CLI에서 바로 활용할 수 있도록 만든 Skills 모음입니다.
 
 ---
 
@@ -337,6 +337,135 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
     --role=roles/aiplatform.user
 ```
 
+**예시 7: HF TGI 사전 빌드 컨테이너로 Llama 3.2 배포**
+
+```
+사용자: Llama 3.2 3B를 HuggingFace TGI 컨테이너로 Vertex AI에 배포하는 코드 써줘.
+
+Gemini: [self-deploy-open-models 스킬 로드]
+
+from google.cloud import aiplatform
+
+aiplatform.init(project="your-project-id", location="us-central1")
+
+model = aiplatform.Model.upload(
+    display_name="llama32-tgi",
+    serving_container_image_uri=(
+        "us-docker.pkg.dev/deeplearning-platform-release/gcr.io/"
+        "huggingface-text-generation-inference-cu124.2-4.ubuntu2204.py311"
+    ),
+    serving_container_environment_variables={
+        "MODEL_ID": "meta-llama/Llama-3.2-3B-Instruct",
+        "NUM_SHARD": "1",
+        "MAX_INPUT_LENGTH": "2047",
+        "MAX_TOTAL_TOKENS": "2048",
+        "HF_TOKEN": "YOUR_HF_TOKEN",
+    },
+    serving_container_ports=[8080],
+    serving_container_predict_route="/generate",
+    serving_container_health_route="/health",
+    serving_container_shared_memory_size_mb=16384,
+    serving_container_deployment_timeout=1800,
+)
+
+endpoint = aiplatform.Endpoint.create(display_name="llama32-tgi-endpoint")
+model.deploy(
+    endpoint=endpoint,
+    machine_type="g2-standard-12",
+    accelerator_type="NVIDIA_L4",
+    accelerator_count=1,
+    traffic_percentage=100,
+    deploy_request_timeout=1800,
+    min_replica_count=1,
+    max_replica_count=2,
+)
+
+# 추론 (TGI: inputs 키 사용)
+response = endpoint.predict(instances=[{
+    "inputs": "What is quantum computing?",
+    "parameters": {"max_new_tokens": 256, "temperature": 0.7},
+}])
+print(response.predictions[0])
+```
+
+**예시 8: GCS의 파인튜닝된 모델을 커스텀 웨이트로 배포**
+
+```
+사용자: GCS에 저장된 파인튜닝된 Llama 3.1 8B 모델을 Vertex AI에 배포하는 방법 알려줘.
+
+Gemini: [self-deploy-open-models 스킬 로드]
+
+import vertexai
+from vertexai.preview import model_garden
+
+vertexai.init(project="your-project-id", location="us-central1")
+
+# GCS에 HuggingFace 형식 파일이 있어야 합니다
+# (config.json, *.safetensors, tokenizer.json, tokenizer_config.json)
+GCS_URI = "gs://your-bucket/llama31-8b-finetuned"
+
+custom_model = model_garden.CustomModel(gcs_uri=GCS_URI)
+
+# 배포 전 지원 하드웨어 확인
+for opt in custom_model.list_deploy_options():
+    print(opt)
+
+# 배포
+endpoint = custom_model.deploy(
+    machine_type="g2-standard-12",
+    accelerator_type="NVIDIA_L4",
+    accelerator_count=1,
+)
+
+response = endpoint.predict(
+    instances=[{"prompt": "Summarize the following: ...", "max_tokens": 256}],
+    use_dedicated_endpoint=True,
+)
+print(response.predictions[0])
+
+# gcloud CLI로도 배포 가능
+# gcloud ai model-garden models deploy \
+#     --model=gs://your-bucket/llama31-8b-finetuned \
+#     --machine-type=g2-standard-12 \
+#     --accelerator-type=NVIDIA_L4 \
+#     --accelerator-count=1 \
+#     --region=us-central1
+```
+
+**예시 9: Vertex AI 배치 예측으로 대량 추론**
+
+```
+사용자: GCS에 있는 수천 개의 텍스트를 Vertex AI 배치 예측으로 한 번에 처리하고 싶어.
+
+Gemini: [self-deploy-open-models 스킬 로드]
+
+from google.cloud import aiplatform
+
+aiplatform.init(project="your-project-id", location="us-central1")
+
+# 입력 JSONL 형식 (gs://your-bucket/input/requests.jsonl)
+# {"prompt": "Summarize: ...", "max_tokens": 100}
+# {"prompt": "Classify: ...", "max_tokens": 50}
+
+model = aiplatform.Model(model_name="MODEL_RESOURCE_NAME")
+
+batch_job = model.batch_predict(
+    job_display_name="bulk-inference-job",
+    gcs_source="gs://your-bucket/input/*.jsonl",
+    gcs_destination_prefix="gs://your-bucket/output/",
+    instances_format="jsonl",
+    machine_type="g2-standard-8",
+    accelerator_type="NVIDIA_L4",
+    accelerator_count=1,
+    max_replica_count=4,   # 병렬 처리 최대 4개 레플리카
+    sync=False,            # 비동기 실행, 완료 대기 없이 반환
+)
+
+# 결과는 gs://your-bucket/output/ 에 JSONL로 저장됩니다
+print(f"Job name: {batch_job.display_name}")
+print(f"Job state: {batch_job.state}")
+```
+
 ---
 
 ## 스킬 상세 설명
@@ -408,9 +537,21 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
 
 **자동 활성화 조건**: Llama/Gemma/Qwen/DeepSeek를 Vertex AI 또는 GKE에 배포, Gemma 3/3n/2 배포, 파인튜닝 모델 서빙, vLLM/SGLang/TGI/Hex-LLM 컨테이너, GPU/TPU/CPU 엔드포인트, GCS 커스텀 웨이트, 멀티모달 비전·오디오 모델, 파인튜닝(Axolotl/PEFT/LoRA/QLoRA), GKE 배포, 배치 추론
 
+#### 배포 옵션 선택 가이드
+
+상황에 따라 아래 5가지 배포 경로 중 하나를 선택합니다.
+
+| 상황 | 권장 옵션 | 특징 |
+|------|-----------|------|
+| 빠른 시작, 하드웨어 모름 | Option 1: 원클릭 SDK | Python 5줄로 배포 완료, 하드웨어 자동 구성 |
+| 서빙 프레임워크 직접 지정 | Option 2: 사전 빌드 컨테이너 | vLLM/TGI/TEI/Hex-LLM 중 선택 가능 |
+| 커스텀 로직·비표준 설정 | Option 3: 커스텀 vLLM 컨테이너 | Dockerfile로 완전한 제어, GPU/CPU/TPU |
+| 파인튜닝된 자체 모델 보유 | Option 4: 커스텀 웨이트 | GCS 모델을 Vertex AI 엔드포인트로 직접 배포 |
+| 기존 GKE 인프라 활용 | Option 5: GKE 배포 | kubectl/YAML, Autopilot 또는 Standard 선택 |
+
 #### 포함 내용
 
-**① 5가지 배포 옵션**
+**① 5가지 배포 옵션 전체 코드**
 
 ```
 Option 1: OpenModel().deploy()         ← 가장 빠른 시작, list_deploy_options(concise=True) 포함
@@ -420,41 +561,64 @@ Option 4: 커스텀 웨이트               ← GCS 모델 → CustomModel().dep
 Option 5: GKE 배포                    ← Autopilot/Standard 클러스터, kubectl/YAML, vLLM/TGI
 ```
 
-**② Option 1 — 원클릭 SDK 배포**
-- `list_deployable_models(model_filter="gemma")` 모델 검색 (`filter=` 아님 — TypeError 발생)
-- `list_deploy_options(concise=True)` 배포 전 하드웨어 요구사항 확인
-- `OpenModel(MODEL_ID).deploy(accept_eula=True)` 기본/하드웨어 지정 배포
-- `endpoint.resource_name` 기반 올바른 OpenAI 호환 URL 형식
+**② Option 1 — 원클릭 SDK 배포 (시작점으로 권장)**
+
+가장 적은 코드로 모델을 배포하고 즉시 추론까지 실행할 수 있는 방법입니다.
+
+- `list_deployable_models(model_filter="gemma")` — 배포 가능한 모델 목록 조회 (`filter=` 사용 시 TypeError 발생)
+- `list_deploy_options(concise=True)` — 배포 전 하드웨어 요구사항과 예상 구성 미리 확인
+- `OpenModel(MODEL_ID).deploy(accept_eula=True)` — 기본 배포, 하드웨어 자동 선택
+- `OpenModel(MODEL_ID).deploy(machine_type=..., accelerator_type=...)` — 하드웨어 직접 지정
+- 추론 방법 2가지:
+  - `endpoint.predict(instances=[...])` — 범용, 모든 배포 타입에서 동작
+  - `openai.OpenAI(base_url=...)` 클라이언트 — chat completions 형식, dedicated endpoint 필요
+- OpenAI 호환 URL 형식: `https://{REGION}-aiplatform.googleapis.com/v1beta1/{endpoint.resource_name}`
+- 리소스 정리: `endpoint.delete(force=True)` + `model.delete()` — idle 상태에서도 과금되므로 필수
 
 **③ Option 2 — 사전 빌드 컨테이너 (7가지 프레임워크)**
 
+Google이 최적화한 컨테이너 이미지로 서빙 프레임워크를 직접 선택합니다. `aiplatform.Model.upload()` + `model.deploy()` 패턴을 사용하며, 프레임워크별로 컨테이너 이미지 URI·환경변수·포트·라우트가 모두 명시됩니다.
+
 | 프레임워크 | 적합한 사용 사례 | 하드웨어 | 예제 포함 |
 |-----------|-----------------|----------|----------|
-| vLLM | 범용 GPU 서빙, OpenAI 호환 | GPU | ✓ |
+| vLLM | 범용 GPU 서빙, OpenAI 호환 API | GPU | ✓ |
 | SGLang | DeepSeek, Qwen3, Gemma 3n, 고처리량 | GPU | — (모델별 노트 참조) |
-| TensorRT-LLM | NVIDIA 최적화 | H100/H200 | — |
-| Hex-LLM | TPU XLA 최적화 서빙 | TPU v5e | ✓ |
-| HF TGI | HuggingFace 생성 모델 | GPU | ✓ |
-| HF TEI | 임베딩 모델 | GPU/CPU | ✓ |
-| HF PyTorch Inference | 분류 등 NLP 태스크 | GPU | ✓ |
+| TensorRT-LLM | NVIDIA 최적화 최대 처리량 | H100/H200 | — |
+| Hex-LLM | TPU XLA 최적화 서빙 (port 7080, `/generate`) | TPU v5e | ✓ |
+| HF TGI | HuggingFace 생성 모델 (port 8080, `/generate`) | GPU | ✓ |
+| HF TEI | 임베딩 모델 (SDK predict 사용) | GPU/CPU | ✓ |
+| HF PyTorch Inference | 분류 등 NLP 태스크 (port 7080, `/pred`) | GPU | ✓ |
 
 **④ Option 3 — 커스텀 vLLM 컨테이너 (3가지 변형)**
-- **GPU**: `vllm/vllm-openai` 베이스, `NVIDIA_L4` ~ `NVIDIA_H200`, Dockerfile + Cloud Build 전체 흐름
-- **CPU**: `c2-standard-16`, 가속기 없음, `autoscaling_target_cpu_utilization`
-- **TPU**: `vllm/vllm-tpu:nightly` 베이스, `ct5lp-hightpu-1t`, GCS 모델 경로 지원
+
+Dockerfile + Cloud Build + Artifact Registry의 전체 흐름을 포함합니다.
+
+- **GPU**: `vllm/vllm-openai` 베이스, `NVIDIA_L4` ~ `NVIDIA_H200`, `autoscaling_target_accelerator_duty_cycle=60` 설정 포함
+- **CPU**: `c2-standard-16`, 가속기 없음, `autoscaling_target_cpu_utilization=60`, GPU 할당량이 없는 환경에 적합
+- **TPU**: `vllm/vllm-tpu:nightly` 베이스, `ct5lp-hightpu-1t`, GCS 경로 모델 지원 (`--model=gs://...`)
 
 **⑤ Option 4 — 커스텀 웨이트 배포 (Preview)**
+
+파인튜닝이 완료된 모델을 GCS에 업로드한 후 Vertex AI 엔드포인트로 배포합니다.
+
 - 지원 베이스 모델: Llama, Gemma, Qwen, DeepSeek, Mistral, Phi-4
-- GCS 필수 파일 목록 (config.json, safetensors, tokenizer 파일)
-- `CustomModel(gcs_uri=...).deploy()` Python SDK + gcloud CLI
+- GCS 필수 파일: `config.json`, `model.safetensors`, `tokenizer.json` 등 HuggingFace 형식
+- HF → GCS 업로드: `snapshot_download()` + `gsutil -m cp -r`
+- Python SDK: `model_garden.CustomModel(gcs_uri=GCS_URI).deploy()` — `vertexai.preview`에서 임포트
+- gcloud CLI: `gcloud ai model-garden models deploy --model=gs://... --region=us-central1`
+- `custom_model.list_deploy_options()` 로 배포 전 지원 하드웨어 확인 가능
 
 **⑥ Option 5 — GKE 배포**
-- Autopilot (`create-auto`) / Standard (`create` + GPU node pool) 클러스터 생성
-- HF 토큰 Kubernetes Secret 설정
-- vLLM YAML 구조 (Llama 3.2 기준, port 7080 → Service 8000)
-- TGI YAML 핵심 설정 (port 8080, `/generate`)
-- 모델 크기별 리소스 할당표 (CPU/Memory/Ephemeral/GPU)
-- `/dev/shm` Memory 볼륨 마운트 필수
+
+Vertex AI 엔드포인트 외에 GKE 클러스터에 직접 배포하는 방법입니다.
+
+- **Autopilot** (`create-auto`): 노드 자동 관리, GPU 프로비저닝 자동화. 신규 GKE 환경에 권장
+- **Standard** (`create` + GPU 노드 풀): 노드 풀 직접 제어, Workload Identity 옵션 제공
+- HF 토큰 시크릿: `kubectl create secret generic hf-secret --from-literal=hf_api_token=...`
+- vLLM YAML: port 7080 → Service port 8000, `/dev/shm` Memory 볼륨 마운트 **필수**
+- TGI YAML: port 8080, `/generate`, 환경변수로 모델·샤드 설정
+- 모델 크기별 CPU·메모리·임시 스토리지·GPU 리소스 할당표 포함
+- 추론 엔드포인트: `POST localhost:7080/generate` (vLLM) / `POST localhost:8080/generate` (TGI)
 
 **⑦ 하드웨어 레퍼런스**
 
@@ -475,12 +639,13 @@ Option 5: GKE 배포                    ← Autopilot/Standard 클러스터, kub
 | TPU | `tpu7x-standard-4t` | v7x | Llama 3.3 70B (tensor_parallel=8) |
 
 **⑧ 모델별 특이사항 섹션**
+
 - **DeepSeek-V3/R1**: SGLang(권장) / vLLM / TensorRT-LLM 3가지 옵션 비교
-- **Qwen3 Thinking Mode**: 권장 파라미터 (temperature 0.6, top_p 0.95, max_new_tokens 8192+)
-- **멀티모달**: 이미지(Llama 3.2 Vision, Gemma 3) + 오디오(Gemma 3n, `audio_url` 형식)
-- **Gemma 3**: 전체 모델 ID (270m~27b, it/pt 변형), vLLM + RTX Pro 6000, 1B는 멀티모달 불가
-- **Gemma 3n**: SGLang 전용(vLLM 불가), 오디오 지원, A100 80GB
-- **Gemma 2**: GPU TGI(L4) / TPU Hex-LLM(us-west1 전용, timeout=7200s) 이중 경로
+- **Qwen3 Thinking Mode**: 권장 파라미터 (temperature 0.6, top_p 0.95, max_new_tokens 8192+). TPU에서 비활성화: 프롬프트 끝에 `<think></think>` 추가
+- **멀티모달**: 이미지 (Llama 3.2 Vision, Gemma 3) + 오디오 (Gemma 3n, `audio_url` 형식)
+- **Gemma 3**: 전체 모델 ID (270m~27b, it/pt 변형), vLLM + RTX Pro 6000, **1B는 멀티모달 불가**
+- **Gemma 3n**: SGLang 전용 (vLLM 불가), 오디오 지원, A100 80GB
+- **Gemma 2**: GPU TGI(L4) / TPU Hex-LLM (us-west1 전용, timeout=7200s) 이중 경로
 
 **⑨ Gemma 파인튜닝 (4가지 프레임워크)**
 
@@ -491,11 +656,65 @@ Option 5: GKE 배포                    ← Autopilot/Standard 클러스터, kub
 | KerasNLP | Gemma 1 (2B/7B) | LoRA | 1x L4 | 4 |
 | Ray + TRL | Gemma 1 2B | QLoRA | 1x A100 | 32 |
 
-컨테이너 이미지 URI(검증 완료), 하이퍼파라미터, JSONL 데이터셋 형식, GCS 출력 경로 포함
+컨테이너 이미지 URI (검증 완료), 하이퍼파라미터, JSONL 데이터셋 형식, GCS 출력 경로 포함
 
 **⑩ 배치 추론**
-- Vertex AI 관리형 배치 예측 (`model.batch_predict()`) — JSONL 입력, GCS 출력
-- Ray on Vertex AI — 분산 배치 처리, ROUGE 평가 메트릭 포함
+
+- Vertex AI 관리형 배치 예측: `model.batch_predict()` — JSONL 입력, GCS 출력, 비동기 실행 (`sync=False`)
+- Ray on Vertex AI: 분산 배치 처리, ROUGE 평가 메트릭 포함
+
+#### 전형적인 배포 워크플로우
+
+배포부터 추론, 리소스 정리까지의 기본 흐름입니다.
+
+```python
+import vertexai
+from vertexai import model_garden
+
+vertexai.init(project="PROJECT_ID", location="us-central1")
+
+# 1. 배포 가능한 모델 검색
+models = model_garden.list_deployable_models(model_filter="gemma")
+
+# 2. 배포 전 하드웨어 요구사항 확인
+model = model_garden.OpenModel("google/gemma3@gemma-3-12b-it")
+model.list_deploy_options(concise=True)
+
+# 3. 배포 (하드웨어 직접 지정)
+endpoint = model.deploy(
+    accept_eula=True,
+    machine_type="g4-standard-48",
+    accelerator_type="NVIDIA_RTX_PRO_6000",
+    accelerator_count=1,
+    use_dedicated_endpoint=True,
+)
+
+# 4a. 추론 — raw predict (범용, 모든 배포 타입 지원)
+response = endpoint.predict(
+    instances=[{"prompt": "서울의 역사를 알려줘.", "max_tokens": 512}]
+)
+print(response.predictions[0])
+
+# 4b. 추론 — OpenAI 호환 클라이언트 (dedicated endpoint 전용)
+import openai, google.auth, google.auth.transport.requests
+
+creds, _ = google.auth.default()
+creds.refresh(google.auth.transport.requests.Request())
+
+client = openai.OpenAI(
+    base_url=f"https://us-central1-aiplatform.googleapis.com/v1beta1/{endpoint.resource_name}",
+    api_key=creds.token,
+)
+response = client.chat.completions.create(
+    model="",  # 모델 정보는 URL에 포함됨
+    messages=[{"role": "user", "content": "안녕하세요!"}],
+    max_tokens=256,
+)
+print(response.choices[0].message.content)
+
+# 5. 리소스 정리 (필수 — idle 상태에서도 과금됨)
+endpoint.delete(force=True)
+```
 
 ---
 
