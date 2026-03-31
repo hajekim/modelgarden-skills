@@ -1,7 +1,7 @@
 # Model Garden Skills for Gemini CLI
 
 Vertex AI Model Garden의 오픈 모델을 Gemini CLI에서 바로 활용할 수 있도록 만든 Skills 모음입니다.
-**MaaS** (서버리스 API)와 **자체 배포** (Vertex AI 엔드포인트·GKE) 두 가지 서빙 방식을 모두 지원합니다.
+**MaaS** (서버리스 API)와 **자체 배포** (Vertex AI Endpoint·GKE) 두 가지 서빙 방식을 모두 지원합니다.
 
 ---
 
@@ -102,7 +102,7 @@ cd ~/sandbox/modelgarden-skills && git pull
 | 스킬 | 서빙 방식 | 자동 활성화 키워드 |
 |------|-----------|-------------------|
 | [`maas-open-models`](#maas-open-models) | 서버리스 API | Kimi K2, MiniMax M2, GLM, gpt-oss, DeepSeek/Llama/Qwen MaaS, 임베딩 MaaS, IAM 접근 권한, 컨텍스트 캐싱 |
-| [`self-deploy-open-models`](#self-deploy-open-models) | Vertex AI 엔드포인트 / GKE | Gemma 3/3n/2 배포, vLLM/SGLang/TGI, GPU/TPU, 파인튜닝, GKE 배포, 배치 추론 |
+| [`self-deploy-open-models`](#self-deploy-open-models) | Vertex AI Endpoint / GKE | Gemma 3/3n/2 배포, vLLM/SGLang/TGI, GPU/TPU, 파인튜닝, GKE 배포, 배치 추론 |
 
 > **MaaS 전용 모델** (자체 배포 불가): Kimi K2 Thinking, MiniMax M2, GLM 5/4.7, gpt-oss-120b/20b
 >
@@ -129,7 +129,7 @@ cd ~/sandbox/modelgarden-skills && git pull
 ### self-deploy-open-models 트리거 예시
 
 ```
-"Gemma 3 12B를 Vertex AI 엔드포인트에 배포하고 싶어"
+"Gemma 3 12B를 Vertex AI Endpoint에 배포하고 싶어"
 "Gemma 3n으로 오디오 파일을 처리하는 코드 써줘"
 "Gemma 2 9B를 TPU v5e로 서빙하는 방법은?"
 "vLLM 컨테이너로 DeepSeek V3를 서빙하고 싶어"
@@ -238,7 +238,7 @@ for embedding in response.embeddings:
 | 빠른 시작, 하드웨어 모름 | Option 1: 원클릭 SDK | Python 5줄로 배포 완료, 하드웨어 자동 구성 |
 | 서빙 프레임워크 직접 지정 | Option 2: 사전 빌드 컨테이너 | vLLM/TGI/TEI/Hex-LLM 중 선택 가능 |
 | 커스텀 로직·비표준 설정 | Option 3: 커스텀 vLLM 컨테이너 | Dockerfile로 완전한 제어, GPU/CPU/TPU |
-| 파인튜닝된 자체 모델 보유 | Option 4: 커스텀 웨이트 | GCS 모델을 Vertex AI 엔드포인트로 직접 배포 |
+| 파인튜닝된 자체 모델 보유 | Option 4: 커스텀 웨이트 | GCS 모델을 Vertex AI Endpoint로 직접 배포 |
 | 기존 GKE 인프라 활용 | Option 5: GKE 배포 | kubectl/YAML, Autopilot 또는 Standard 선택 |
 
 #### Python SDK 빠른 시작 (Option 1)
@@ -365,9 +365,9 @@ endpoint.delete(force=True)
 
 **자체 배포를 선택하세요** → 파인튜닝 모델 사용, 대용량 안정적 트래픽, VPC 완전 격리가 필요한 경우
 
-### Vertex AI 엔드포인트 vs GKE
+### Vertex AI Endpoint vs GKE
 
-| 기준 | Vertex AI 엔드포인트 | GKE |
+| 기준 | Vertex AI Endpoint | GKE |
 |------|---------------------|-----|
 | **설정 복잡도** | 낮음 (Python SDK) | 높음 (kubectl/YAML) |
 | **자동 스케일링** | 내장 | HPA 직접 설정 |
