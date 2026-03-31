@@ -1,7 +1,7 @@
 # Model Garden Skills for Gemini CLI
 
 Vertex AI Model Garden의 오픈 모델을 Gemini CLI에서 바로 활용할 수 있도록 만든 Skills 모음입니다.
-**MaaS** (서버리스 API)와 **자체 배포** (Vertex AI Endpoint·GKE) 두 가지 서빙 방식을 모두 지원합니다.
+**MaaS** (서버리스 API)와 **Self-Deployed** (Vertex AI Endpoint·GKE) 두 가지 서빙 방식을 모두 지원합니다.
 
 ---
 
@@ -29,7 +29,7 @@ Vertex AI Model Garden의 오픈 모델을 Gemini CLI에서 바로 활용할 수
 # MaaS 사용 시
 pip install google-genai
 
-# 자체 배포 사용 시
+# Self-Deployed 사용 시
 pip install "google-cloud-aiplatform>=1.106.0" openai google-auth requests
 ```
 
@@ -104,11 +104,11 @@ cd ~/sandbox/modelgarden-skills && git pull
 | [`maas-open-models`](#maas-open-models) | 서버리스 API | Kimi K2, MiniMax M2, GLM, gpt-oss, DeepSeek/Llama/Qwen MaaS, 임베딩 MaaS, IAM 접근 권한, 컨텍스트 캐싱 |
 | [`self-deploy-open-models`](#self-deploy-open-models) | Vertex AI Endpoint / GKE | Gemma 3/3n/2 배포, vLLM/SGLang/TGI, GPU/TPU, 파인튜닝, GKE 배포, 배치 추론 |
 
-> **MaaS 전용 모델** (자체 배포 불가): Kimi K2 Thinking, MiniMax M2, GLM 5/4.7, gpt-oss-120b/20b
+> **MaaS 전용 모델** (Self-Deployed 불가): Kimi K2 Thinking, MiniMax M2, GLM 5/4.7, gpt-oss-120b/20b
 >
-> **자체 배포 전용 모델**: Gemma 3, Gemma 3n, Gemma 2, Mistral, Phi-4
+> **Self-Deployed 전용 모델**: Gemma 3, Gemma 3n, Gemma 2, Mistral, Phi-4
 >
-> **MaaS·자체 배포 모두 가능**: DeepSeek, Llama, Qwen
+> **MaaS·Self-Deployed 모두 가능**: DeepSeek, Llama, Qwen
 
 ---
 
@@ -350,9 +350,9 @@ endpoint.delete(force=True)
 
 ## 서빙 옵션 선택 가이드
 
-### MaaS vs 자체 배포
+### MaaS vs Self-Deployed
 
-| 기준 | MaaS | 자체 배포 |
+| 기준 | MaaS | Self-Deployed |
 |------|------|-----------|
 | **설정 시간** | 분 단위 | 수 시간 ~ 수 일 |
 | **인프라 운영** | 없음 (Google 관리) | 직접 관리 |
@@ -363,7 +363,7 @@ endpoint.delete(force=True)
 
 **MaaS를 선택하세요** → 빠른 프로토타이핑, 트래픽이 불규칙하거나, 파인튜닝이 필요 없는 경우
 
-**자체 배포를 선택하세요** → 파인튜닝 모델 사용, 대용량 안정적 트래픽, VPC 완전 격리가 필요한 경우
+**Self-Deployed를 선택하세요** → 파인튜닝 모델 사용, 대용량 안정적 트래픽, VPC 완전 격리가 필요한 경우
 
 ### Vertex AI Endpoint vs GKE
 
@@ -384,7 +384,7 @@ endpoint.delete(force=True)
 - [Vertex AI MaaS 개요](https://cloud.google.com/vertex-ai/generative-ai/docs/maas/use-open-models)
 - [오픈 모델 접근 권한 부여](https://cloud.google.com/vertex-ai/generative-ai/docs/maas/grant-access-open-models)
 - [서빙 옵션 선택 가이드](https://cloud.google.com/vertex-ai/generative-ai/docs/open-models/choose-serving-option)
-- [자체 배포 모델 개요](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/self-deployed-models)
+- [Self-Deployed 모델 개요](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/self-deployed-models)
 - [사전 빌드 컨테이너 사용](https://cloud.google.com/vertex-ai/generative-ai/docs/open-models/use-prebuilt-containers)
 - [커스텀 웨이트로 모델 배포](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/deploy-models-with-custom-weights)
 
