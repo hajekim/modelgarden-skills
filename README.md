@@ -1,6 +1,6 @@
 # Model Garden Skills for Gemini CLI
 
-Vertex AI Model Garden 오픈 모델을 Gemini CLI에서 쓸 수 있게 정리한 Skills 모음입니다.
+Vertex AI Model Garden 오픈 모델을 Gemini CLI에서 쓸 수 있게 정리한 Skills 모음입니다.  
 MaaS (서버리스 API)와 Self-Deployed (Vertex AI Endpoint·GKE) 두 가지 방식을 모두 다룹니다.
 
 ---
@@ -68,11 +68,11 @@ cp -r skills/self-deploy-open-models ~/.agents/skills/
 | [`maas-open-models`](#maas-open-models) | 서버리스 API | Kimi K2, MiniMax M2, GLM, gpt-oss, DeepSeek/Llama/Qwen MaaS, 임베딩 MaaS, IAM 접근 권한, 컨텍스트 캐싱 |
 | [`self-deploy-open-models`](#self-deploy-open-models) | Vertex AI Endpoint / GKE | Gemma 3/3n/2 배포, vLLM/SGLang/TGI, GPU/TPU, 파인튜닝, GKE 배포, 배치 추론 |
 
-MaaS 전용 모델 (Self-Deployed 불가): Kimi K2, MiniMax M2, GLM 5/4.7, gpt-oss-120b/20b
+- MaaS 전용 모델 (Self-Deployed 불가): Kimi K2, MiniMax M2, GLM 5/4.7, gpt-oss-120b/20b
 
-Self-Deployed 전용: Gemma 3, Gemma 3n, Gemma 2, Mistral, Phi-4
+- Self-Deployed 전용: Gemma 3, Gemma 3n, Gemma 2, Mistral, Phi-4
 
-MaaS·Self-Deployed 모두 가능: DeepSeek, Llama, Qwen
+- MaaS·Self-Deployed 모두 가능: DeepSeek, Llama, Qwen
 
 ---
 
@@ -176,7 +176,7 @@ for embedding in response.embeddings:
 
 캐시된 토큰은 90% 할인됩니다. 최소 4,096 토큰이 필요하며, 별도 설정 없이 묵시적으로 동작합니다. 시스템 프롬프트나 참조 문서 같은 반복 콘텐츠를 프롬프트 앞쪽에 두면 캐시 적중률이 높아집니다.
 
-지원 모델: Qwen3 Coder, Kimi K2, MiniMax M2, gpt-oss-20b, DeepSeek V3.1/V3.2
+- 지원 모델: Qwen3 Coder, Kimi K2, MiniMax M2, gpt-oss-20b, DeepSeek V3.1/V3.2
 
 ---
 
@@ -191,7 +191,7 @@ for embedding in response.embeddings:
 | 빠른 시작, 하드웨어 모름 | Option 1: 원클릭 SDK | Python 5줄로 배포 완료, 하드웨어 자동 구성 |
 | 서빙 프레임워크 직접 지정 | Option 2: 사전 빌드 컨테이너 | vLLM/TGI/TEI/Hex-LLM 중 선택 |
 | 커스텀 로직·비표준 설정 | Option 3: 커스텀 vLLM 컨테이너 | Dockerfile, GPU/CPU/TPU 지원 |
-| 파인튜닝된 자체 모델 | Option 4: 커스텀 웨이트 | GCS 모델을 Vertex AI Endpoint로 직접 배포 |
+| 파인튜닝된 자체 모델 | Option 4: Custom Weight | GCS 모델을 Vertex AI Endpoint로 직접 배포 |
 | 기존 GKE 인프라 활용 | Option 5: GKE 배포 | kubectl/YAML, Autopilot 또는 Standard |
 
 #### 빠른 시작 (Option 1)
@@ -306,7 +306,7 @@ endpoint.delete(force=True)
 | 설정 시간 | 분 단위 | 수 시간 ~ 수 일 |
 | 인프라 운영 | Google 관리 | 직접 관리 |
 | 비용 | 토큰당 과금 | 고정 GPU/TPU 비용 |
-| 커스터마이징 | 표준 웨이트만 | 파인튜닝/커스텀 웨이트 |
+| 커스터마이징 | 표준 웨이트만 | 파인튜닝/Custom Weight |
 | 트래픽 패턴 | 불규칙/간헐적 | 예측 가능/대용량 |
 | 데이터 격리 | 멀티테넌트 | VPC 완전 격리 |
 
@@ -333,7 +333,7 @@ endpoint.delete(force=True)
 - [서빙 옵션 선택 가이드](https://cloud.google.com/vertex-ai/generative-ai/docs/open-models/choose-serving-option)
 - [Self-Deployed 모델 개요](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/self-deployed-models)
 - [사전 빌드 컨테이너 사용](https://cloud.google.com/vertex-ai/generative-ai/docs/open-models/use-prebuilt-containers)
-- [커스텀 웨이트로 모델 배포](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/deploy-models-with-custom-weights)
+- [Custom Weight로 모델 배포](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/deploy-models-with-custom-weights)
 
 ### 배포 튜토리얼 노트북
 
@@ -349,7 +349,7 @@ endpoint.delete(force=True)
 - [HF TGI 배포](https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/notebooks/community/model_garden/model_garden_huggingface_tgi_deployment.ipynb)
 - [HF TEI 임베딩 배포](https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/notebooks/community/model_garden/model_garden_huggingface_tei_deployment.ipynb)
 - [Hex-LLM TPU 배포](https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/notebooks/community/model_garden/model_garden_hexllm_deep_dive_tutorial.ipynb)
-- [커스텀 웨이트 임포트](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/open-models/get_started_with_model_garden_sdk_custom_import.ipynb)
+- [Custom Wieght Import](https://github.com/GoogleCloudPlatform/generative-ai/blob/main/open-models/get_started_with_model_garden_sdk_custom_import.ipynb)
 - [TPU v5e 배포](https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/notebooks/community/model_garden/model_garden_pytorch_llama3_1_qwen2_5_deployment_tpu.ipynb)
 - [TPU v6e 배포](https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/notebooks/community/model_garden/model_garden_pytorch_llama3_1_qwen3_deployment_tpu.ipynb)
 - [TPU v7x 배포](https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/notebooks/community/model_garden/model_garden_pytorch_llama3_3_tpu7x_deployment.ipynb)
